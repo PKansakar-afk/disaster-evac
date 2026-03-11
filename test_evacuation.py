@@ -2,10 +2,6 @@ import networkx as nx
 import random
 import matplotlib.pyplot as plt
 
-# ----------------------------
-# 1. Generate Synthetic Graph
-# ----------------------------
-
 size = 5
 G = nx.grid_2d_graph(size, size)
 G = G.to_directed()
@@ -13,11 +9,6 @@ G = G.to_directed()
 for u, v in G.edges():
     G[u][v]['weight'] = random.randint(1, 10)     # travel time
     G[u][v]['capacity'] = random.randint(10, 50)  # road capacity
-
-
-# ----------------------------
-# 2. Define Sources and Shelters
-# ----------------------------
 
 sources = [(0,0), (0,4)]
 shelters = [(4,4), (4,0)]
@@ -32,11 +23,6 @@ for s in sources:
 for t in shelters:
     G.add_edge(t, "super_sink", capacity=100)
 
-
-# ----------------------------
-# 3. Baseline: Dijkstra Routing
-# ----------------------------
-
 print("\nShortest Paths (Dijkstra):")
 
 for s in sources:
@@ -44,11 +30,6 @@ for s in sources:
         path = nx.shortest_path(G, s, t, weight='weight')
         length = nx.shortest_path_length(G, s, t, weight='weight')
         print(f"{s} -> {t} | path: {path} | time: {length}")
-
-
-# ----------------------------
-# 4. Proposed: Edmonds-Karp Max Flow
-# ----------------------------
 
 flow_value, flow_dict = nx.maximum_flow(
     G,
@@ -65,11 +46,6 @@ for u in flow_dict:
     for v in flow_dict[u]:
         if flow_dict[u][v] > 0:
             print(f"{u} -> {v} | flow = {flow_dict[u][v]}")
-
-
-# ----------------------------
-# 5. Visualize Network
-# ----------------------------
 
 pos = {}
 
