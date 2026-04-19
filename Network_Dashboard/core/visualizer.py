@@ -1,10 +1,19 @@
 import plotly.graph_objects as go
 import networkx as nx
 
-def get_node_color(node_type):
-    if node_type == "source": return "red"
-    if node_type == "shelter": return "lime"
-    if node_type == "super": return "rgba(0,0,0,0)"
+def get_node_color(node_type, shelter_remaining=None, shelter_capacity=None):
+    if node_type == "source":
+        return "red"
+    if node_type == "shelter":
+        # If we have fill data, color by how full the shelter is
+        if shelter_remaining is not None and shelter_capacity:
+            ratio = shelter_remaining / shelter_capacity
+            if ratio == 0:    return "red"     # completely full
+            if ratio <= 0.3:  return "orange"  # nearly full (≤30% space left)
+            return "lime"                       # has space
+        return "lime"   # fallback if no data yet
+    if node_type == "super":
+        return "rgba(0,0,0,0)"
     return "lightblue"
 
 def get_edge_color(flow, capacity):
@@ -18,15 +27,30 @@ def plot_animated_network(G):
     pos = {node: tuple(map(int, node.split(','))) for node in G.nodes() if node not in ["S", "T"]}
     
     # 1. Base Node Trace
-    node_x, node_y, node_colors = [], [], []
+    node_x, node_y, node_colors, node_text = [], [], [], []
     for node in pos:
         node_x.append(pos[node][0])
         node_y.append(pos[node][1])
-        node_colors.append(get_node_color(G.nodes[node].get("type", "regular")))
+
+        node_data = G.nodes[node]
+        ntype     = node_data.get("type", "regular")
+        remaining = node_data.get("shelter_remaining", None)
+        capacity  = node_data.get("shelter_capacity",  None)
+
+        node_colors.append(get_node_color(ntype, remaining, capacity))
+
+        # Build hover text — shelters show fill level, sources show type
+        if ntype == "shelter" and capacity:
+            used = capacity - (remaining or capacity)
+            node_text.append(f"Shelter {node}<br>{used:,}/{capacity:,} used")
+        elif ntype == "source":
+            node_text.append(f"Hazard Zone {node}")
+        else:
+            node_text.append(f"Node {node}")
 
     node_trace = go.Scatter(
         x=node_x, y=node_y, mode='markers', hoverinfo='text',
-        text=[f"Node: {n}" for n in pos],
+        text=node_text,
         marker=dict(color=node_colors, size=10, line=dict(color="white", width=1))
     )
 
