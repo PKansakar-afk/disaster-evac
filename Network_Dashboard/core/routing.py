@@ -110,6 +110,13 @@ def run_routing(G, algorithm_name, population):
                         cong = G[u][v]['flow'] / cap
                         max_cong = max(max_cong, cong)
 
+                        evacuated_from_source = pop_per_source - remaining_at_source
+                        if evacuated_from_source > 0:
+                            G['S'][source]['flow'] = G['S'][source].get('flow', 0) + evacuated_from_source
+
+        for shelter, remaining in remaining_shelter_cap.items():
+            G.nodes[shelter]["shelter_remaining"] = remaining
+
         # Compute final metrics
         pct_evacuated = round(100 * total_evacuees_safe / population, 1) if population > 0 else 0
         avg_tt        = round(total_weighted_time / total_evacuees_safe, 2) if total_evacuees_safe > 0 else 0
@@ -159,6 +166,13 @@ def run_routing(G, algorithm_name, population):
                         max_cong   = max(max_cong, f / G[u][v]['capacity'])
                         total_cost += f * G[u][v]['weight']
 
+        # ── Write shelter occupancy back to graph nodes ──
+        for node, data in G.nodes(data=True):
+            if data.get('type') == 'shelter' and G.has_edge(node, 'T'):
+                shelter_flow = G[node]['T'].get('flow', 0)
+                cap = data.get('shelter_capacity', 0)
+                G.nodes[node]['shelter_remaining'] = max(0, cap - shelter_flow)
+
         # compare what the network moved vs what was demanded
         # flow_value is naturally capped by shelter capacity (now finite).
         # If flow_value < population, the network could not evacuate everyone.
@@ -196,6 +210,13 @@ def run_routing(G, algorithm_name, population):
                     if G[u][v].get('capacity', 1) > 0 and u != 'S' and v != 'T':
                         max_cong   = max(max_cong, f / G[u][v]['capacity'])
                         total_cost += f * G[u][v]['weight']
+
+        # ── Write shelter occupancy back to graph nodes ──
+        for node, data in G.nodes(data=True):
+            if data.get('type') == 'shelter' and G.has_edge(node, 'T'):
+                shelter_flow = G[node]['T'].get('flow', 0)
+                cap = data.get('shelter_capacity', 0)
+                G.nodes[node]['shelter_remaining'] = max(0, cap - shelter_flow)
 
         # feasibility check
         # nx.max_flow_min_cost internally calls maximum_flow first, so
